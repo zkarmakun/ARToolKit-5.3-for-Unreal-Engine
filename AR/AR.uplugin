@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "AR",
+	"Description": "Now you can create easy multiplatform AR with artoolkit plugin for unreal engine, follow the samples in the documention page for quick setup",
+	"Category": "Augmented Reality",
+	"CreatedBy": "Jorge Calleros Ramirez",
+	"CreatedByURL": "",
+	"DocsURL": "www.artoolkit.org",
+	"MarketplaceURL": "",
+	"SupportURL": "http://artoolkit.org/community/forums/",
+	"EnabledByDefault": false,
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "AR",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
