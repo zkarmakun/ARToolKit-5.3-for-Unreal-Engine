@@ -45,21 +45,30 @@
 #include "ARTarget.h"
 #include "ARPawn.h"
 
+//-- DEBUG MACROS-----------------------------------
+/**  Use just for debug purposes, anyway shipping build disable it*/
 DEFINE_LOG_CATEGORY_STATIC(LogARToolKit, Log, All);
 #define print(txt) GEngine->AddOnScreenDebugMessage(-1,10,FColor::Green, txt)
 #define error(txt) GEngine->AddOnScreenDebugMessage(-1,10,FColor::Red, txt)
 #define warning(txt) GEngine->AddOnScreenDebugMessage(-1,10,FColor::Yellow, txt)
 
-
+//--- ANDROID JAVA CUSTOM CALLS-------------------------
 #if PLATFORM_ANDROID
-extern void AndroidThunkCpp_startCamera();
-extern void AndroidThunkCpp_stopCamera();
-extern bool AndroidThunkCpp_AFileExist(const FString& path);
-extern bool newFrame;
-extern unsigned char* rawDataAndroid;
 #include <android/log.h>
+/** Start camera from java code, from UPL system, only default resolution value, meaning poor quality for camera device*/
+extern void AndroidThunkCpp_startCamera();
+/** Stop camera from java code, from UPL system*/
+extern void AndroidThunkCpp_stopCamera();
+/** Check if file exist just android, DEPRECATED*/
+extern bool AndroidThunkCpp_AFileExist(const FString& path);
+/** Whenever a new frame is arrived and need to be procedded*/
+extern bool newFrame;
+/** Get Raw Data camera info, by instance YUV420*/
+extern unsigned char* rawDataAndroid;
 #endif
 
+
+//---- PER PLATFORM MACROS------------------
 #if PLATFORM_WINDOWS
 #define _WIN_
 #elif PLATFORM_MAC
@@ -70,6 +79,7 @@ extern unsigned char* rawDataAndroid;
 #define _IOS_
 #endif
 
+/** Start only in Shared Ref module sinleton*/
 ARToolKit::ARToolKit() :
 	pixelFormat(AR_PIXEL_FORMAT_INVALID),
 	threadHandle(NULL),
@@ -191,6 +201,7 @@ int ARToolKit::initNFT(ARParamLT *cparamLT, AR_PIXEL_FORMAT pixFormat)
 
 void ARToolKit::unloadNFT()
 {
+	//free tracking handle
 	int i, j;
 	if (threadHandle)
 	{
@@ -200,6 +211,7 @@ void ARToolKit::unloadNFT()
 		threadHandle = nullptr;
 	}
 
+	//free NFT data, and reset vars
 	j = 0;
 	for (i = 0; i < surfaceSetCount; i++) {
 		if (j == 0) UE_LOG(LogARToolKit, Log, TEXT("Unloading NFT tracking surfaces."));
@@ -226,6 +238,7 @@ int ARToolKit::loadNFT(TArray<AARTarget*> targetsFound)
 	KpmRefDataSet *refDataSet = NULL;
 	refDataSet = NULL;
 
+	//if we found some targets in world, process
 	if (targetsFound.Num() > 0)
 	{
 		for (auto& target : targetsFound)
@@ -344,14 +357,18 @@ int ARToolKit::loadNFT(TArray<AARTarget*> targetsFound)
 
 void ARToolKit::initializeAR(ECameraSelection cameraSelection, AARPawn* newPawn, TArray<AARTarget*> targetFound)
 {
+	//base content directory for windows and mac
 	contentDirectory = FPaths::GameContentDir() + "/AR";
 
 #if defined _ANDROID_
-	//contentDirectory = GFilePathBase + TEXT("/UE4Game/") + FApp::GetGameName() + TEXT("/") + FString::Printf(TEXT("%s/Content/"), FApp::GetGameName()) + FString("/AR");
+	//content directory for Android, GExternialFilePath is a global var inside UE pointing to content, PCH hijack as extern variable
 	contentDirectory = GExternalFilePath;
 #elif defined _IOS_
+	//content directory for IOS
     contentDirectory = FPaths::ConvertRelativePathToFull(ConvertToIOSPath(FString::Printf(TEXT("%s"), FApp::GetGameName()).ToLower() + FString("/content/AR"), 0));
 #endif
+
+	//-- Choose camera index process by switch
 	int32 index = 1;
 	FString indexM = "back";
 
@@ -375,19 +392,26 @@ void ARToolKit::initializeAR(ECameraSelection cameraSelection, AARPawn* newPawn,
 	}
 #endif
 
+
+	// set current pawn
 	currentPawn = newPawn;
+
+	// set camera string configurator, based windows
 	FString camera_config = "-device=WinDS -devNum=" + FString::FromInt(index) + " -flipV";
     
 #if defined _MAC_
+	/ set camera string configurator, based mac
     camera_config = "-width=640 -height=480 -nodialog";
 #elif defined _IOS_
+	/ set camera string configurator, based IOS
     camera_config = "-device=iPhone -format=BGRA -preset=cif -position=" + indexM;
 #endif
 
 	
-
+	//camera instrisics file path
 	FString camera_parameters = contentDirectory + "/camera_para.dat";
 
+	//setup camera
 	if (!setupCamera(camera_config, camera_parameters))
 	{
 		UE_LOG(LogARToolKit, Error, TEXT("Unable to setup camera!"));
@@ -398,13 +422,17 @@ void ARToolKit::initializeAR(ECameraSelection cameraSelection, AARPawn* newPawn,
 		return;
 	}
 
+	//if camera open at this point, then plugin become valid
 	isValid = true;
+
+	//init NFT
 	if (!initNFT(gCparamLT, pixelFormat))
 	{
 		error("Unable to init NFT.");
 		return;
 	}
 
+	//load NFT
 	if (!loadNFT(targetFound))
 	{
 		error("Unable to load NFT.");
@@ -423,9 +451,10 @@ void ARToolKit::shutdownAR()
 {
 
     UE_LOG(LogARToolKit, Log, TEXT("camera shutdown!"));
-
+	//reset target array
 	targets.Empty();
 
+	//unload and destroy all Handles
 	unloadNFT();
 	ar2DeleteHandle(&ar2Handle);
 	ar2Handle = NULL;
@@ -434,10 +463,13 @@ void ARToolKit::shutdownAR()
 	//arParamLTFree(&gCparamLT);
 	//gCparamLT = NULL;
 	
-
+	//reset raw data array
 	rawData.Empty();
+
+	//become invalid
 	isValid = false;
 
+	//stop all camera streams
 #if defined _WIN_ || defined _MAC_ || defined _IOS_
 	arVideoCapStop();
 	arVideoClose();
@@ -470,7 +502,7 @@ int32 ARToolKit::getheight()
 
 void ARToolKit::playPreview()
 {
-	
+	//video stream only start if is valid and we have no null pointer texture
 	if (isValid)
 	{
 		if (texture)
@@ -522,6 +554,7 @@ void ARToolKit::detect(unsigned char* data)
 						{
 							if (pageNo >= 0 && pageNo < PAGES_MAX)
 							{
+								//Target become visible
 								if (surfaceSet[pageNo]->contNum < 1)
 								{
 									currentPawn->execOnTargetFound(targets[pageNo]->ID, targets[pageNo]->targetName);
@@ -540,6 +573,7 @@ void ARToolKit::detect(unsigned char* data)
 
 			if (pageNo != -1)
 			{
+				//Target lost
 				if (ar2Tracking(ar2Handle, surfaceSet[pageNo], data, trackingTrans, &err) < 0)
 				{
 					currentPawn->execOnTargetLost(targets[pageNo]->ID, targets[pageNo]->targetName);
@@ -604,6 +638,7 @@ void ARToolKit::detect(unsigned char* data)
 
 void ARToolKit::setTracking(bool bAllowTrack)
 {
+	//enable or disable camera stream
 	if (bAllowTrack)
 	{
 		isValid = true;
@@ -626,7 +661,7 @@ void ARToolKit::setTracking(bool bAllowTrack)
 
 void ARToolKit::updateAR(float DeltaTime)
 {
-    
+    //try to get new camera raw data, and if is valid, process texture and track
 	if (texture && isValid)
 	{
 		void* image = NULL;
@@ -694,7 +729,9 @@ void ARToolKit::updateTexture(void* data)
 		}
 		RegionData->SrcData = (uint8*)rawData.GetData();
 	}
+
 #elif defined _ANDROID_
+	//convert YUV420 to bgra
 	char* yuv420sp = (char*)data;
 	int* rgb = new int[width * height];
 	if (!rawDataAndroid) return;
@@ -737,6 +774,7 @@ void ARToolKit::updateTexture(void* data)
 	Mip.BulkData.Unlock();
 	texture->UpdateResource();
 
+	//UE MUST FIX THIS, 4.13.1 breaks everything
 	/*
 	bool bFreeData = false;
 

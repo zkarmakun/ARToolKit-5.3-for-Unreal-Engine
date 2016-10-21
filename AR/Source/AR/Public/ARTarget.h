@@ -53,8 +53,13 @@ class AARTarget : public AActor
 private:
 
 #if WITH_EDITOR
+	/** Texture to display target in editor*/
 	UTexture2D* targetTexture;
+
+	/** Store default name*/
 	FString prevAcceptTargetName;
+
+	/** if no target load display sample from Plugin content*/
 	UTexture2D* defaultTexture;
 #endif
 
@@ -62,25 +67,47 @@ public:
 
 	AARTarget();
 
+
+	//-- NFT parameter---------------------
+	//unique ID
 	int32 ID = -1;
+
+	//filter for detect frecuency
 	ARdouble filterCutoffFrequency;
+
+	//filter rate
 	ARdouble filterSampleRate;
+
+	//previous frame valid
 	bool validPrev;
+
+	//store if is valid, meaning was detected
 	bool valid;
+
+	//store matrix pose
 	ARdouble trans[3][4];
+
+	//filter for matrix
 	ARFilterTransMatInfo* ftmi;
 
 
-	//vars
+	//-- COMPONENTS ------------------------------
 	UPROPERTY(Category = "ARToolKit", VisibleDefaultsOnly)
 		USceneComponent* targetPivot;
 
+	/** Whenever a target was loaded, this plane show that texture*/
 	UPROPERTY(Category = "ARToolKit", VisibleDefaultsOnly)
 		UStaticMeshComponent* plane;
 
+	/** if set allow shadow plane, this plane represent a basic plane with texture
+		*You can use Shadow Plane for mobile content, but is heavy, recommed use Mobile Dynamic Shadows instead cascade shadows
+		*Because UE is deferred rendering you will have gab in the corners of the visualzation shadow plane, because mix between diffuse and self ilumination
+		*to avoid gap, HLSL shader is needed
+	*/
 	UPROPERTY(Category = "ARToolKit", VisibleDefaultsOnly)
 		UStaticMeshComponent* shadowPlane;
 
+	//-- BASIC OVERRIDES
 	virtual void BeginPlay() override;
 	virtual void OnConstruction(const FTransform& Transform) override;
 
@@ -99,16 +126,34 @@ public:
 	UPROPERTY(EditAnyWhere, Category = "ARToolKit", meta = (ToolTip = "set new scale for the shadow, try to covert all the space for your meshes"))
 		float shadowPlaneScale = 400;
 
+	/** This event fires when Target is found by detection
+		*You can use this event to trigger some animation or sound
+	*/
 	UFUNCTION(BlueprintImplementableEvent, Category = "ARToolKit")
 		void OnTargetFound();
 
+	/** This event fires when Target is Lost by detection
+		*You can use this event to stop some animation or sound
+	*/
 	UFUNCTION(BlueprintImplementableEvent, Category = "ARToolKit")
 		void OnTargetLost();
 
+	/** Store pixel size for this target
+		*set by ARToolKit.cpp
+	*/
 	FVector2D sizeMM = FVector2D(400, 400);
+
+	/** Store offsets, this is calculate from ARToolKit cpp
+		*set by ARToolKit.cpp
+	*/
 	FVector offset;
 	
+	/** return this actor rotation*/
 	FRotator getTargetRotation();
+
+	/** toogle Actors visibility binded to this Target
+		*Call by ARToolKit.cpp when found or lost target
+	*/
 	void setTargetActorsHiddenInGame(bool bHidden);
 
 };

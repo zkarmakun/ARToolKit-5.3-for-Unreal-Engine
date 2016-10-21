@@ -45,6 +45,7 @@
 class IARModule : public IModuleInterface
 {
 protected:
+	/** ARTooKit Unique Var inside Module*/
 	TSharedPtr<class ARToolKit> ARToolkit;
 
 public:
@@ -58,6 +59,7 @@ public:
 		return FModuleManager::Get().IsModuleLoaded("AR");
 	}
 
+	/** Return shared reference for static calls*/ 
 	FORCEINLINE TSharedPtr<class ARToolKit> GetARToolKit() const
 	{
 		return ARToolkit;

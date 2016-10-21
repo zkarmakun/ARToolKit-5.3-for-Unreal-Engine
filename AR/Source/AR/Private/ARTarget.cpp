@@ -49,11 +49,13 @@ DEFINE_LOG_CATEGORY_STATIC(LogARToolKits, Log, All);
 
 AARTarget::AARTarget()
 {
+	//create components
 	targetPivot = CreateDefaultSubobject<USceneComponent>("Target Pivot");
 	targetPivot->SetMobility(EComponentMobility::Static);
 	RootComponent = targetPivot;
 
 #if WITH_EDITOR
+	//Editor only: create static mesh component and display plane 
 	plane = CreateDefaultSubobject<UStaticMeshComponent>("Target Plane");
 	plane->SetupAttachment(targetPivot);
 	UMaterial* targetMat = Cast<UMaterial>(StaticLoadObject(UMaterial::StaticClass(), NULL, TEXT("/AR/targetMat")));
@@ -62,6 +64,7 @@ AARTarget::AARTarget()
 		plane->SetMaterial(0, targetMat);
 	}
 
+	// set dummy texture by default
 	UStaticMesh* myMeshPlane = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), NULL, TEXT("/AR/Plane")));
 	if (myMeshPlane != NULL)
 	{
@@ -74,6 +77,7 @@ AARTarget::AARTarget()
 	defaultTexture = Cast<UTexture2D>(StaticLoadObject(UTexture2D::StaticClass(), NULL, TEXT("/AR/icon128")));
 #endif
 
+	//create shadow plane component
 	shadowPlane = CreateDefaultSubobject<UStaticMeshComponent>("shadow plane");
 	shadowPlane->SetupAttachment(RootComponent);
 	UStaticMesh* myMeshPlane2 = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), NULL, TEXT("/AR/Plane")));
@@ -96,12 +100,14 @@ void AARTarget::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
+	//set scale based on custom value
 	SetActorScale3D(FVector(scale, scale, scale));
 
 #if WITH_EDITOR
 
 	if (targetName != "" && prevAcceptTargetName != targetName)
 	{
+		//load target from content
 		FString thisTarget = FPaths::GameContentDir() + "AR/" + targetName;
 		if (FPaths::FileExists(thisTarget + ".iset"))
 		{
@@ -163,22 +169,16 @@ void AARTarget::OnConstruction(const FTransform& Transform)
 		}
 	}
 
+	//set plane size based on image target
 	plane->SetRelativeScale3D(FVector(1, pixels2millimeter(sizeMM.X), pixels2millimeter(sizeMM.Y)));
 
 #endif
 
-	if (AllowShadowPlane)
-	{
-		shadowPlane->SetVisibility(true);
-	}
-	else if (!AllowShadowPlane)
-	{
-		shadowPlane->SetVisibility(false);
-	}
+	//toogle shadow plane 
+	shadowPlane->SetVisibility(AllowShadowPlane);
 
+	//set shadow plane sacle
 	shadowPlane->SetRelativeScale3D(FVector(1, shadowPlaneScale, shadowPlaneScale));
-
-
 }
 
 void AARTarget::BeginPlay()
@@ -191,6 +191,7 @@ void AARTarget::BeginPlay()
 	}
 	else
 	{
+		//if plane exist set camera texture 
 		UMaterialInstanceDynamic* shadowDynamicMaterial = shadowPlane->CreateDynamicMaterialInstance(0);
 		if (shadowDynamicMaterial != NULL)
 		{

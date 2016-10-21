@@ -52,13 +52,16 @@ class AARPawn : public APawn
 	GENERATED_BODY()
 
 private:
+	/** aspect ratio for camera device resolution*/
 	float pixelAspectRatioTexture = 0;
 	UMaterialInstanceDynamic* materialInstance;
 	//const float fov = 70.580002f;
+	//const horizontal FOV provide for camera intrinsics in files
 	const float hFOV = 52.00f;
+
 	float vFOV;
 	
-
+	/** get Camera Transformations*/
 	FTransform getCameraTrans();
 	void setCameraTransformations();
 	void setBackground();
@@ -67,6 +70,7 @@ public:
 
 	AARPawn();
 
+	//-- COMPONENTS ----------------------------------
 	UPROPERTY(Category = "ARToolKit", VisibleDefaultsOnly)
 		USceneComponent* pivot;
 
@@ -83,30 +87,44 @@ public:
 	UPROPERTY(Category = "ARToolKit", VisibleDefaultsOnly)
 		USceneComponent* cameraHelper;
 
+	//--- VARS ---------------------------------------------
+
+	/** Access camera
+		*Blueprint programmer can choose camera index, or camera position in mobile case
+	*/
 	UPROPERTY(EditAnyWhere, Category = "ARToolKit", meta = (ToolTip = "DEFAULT in mobile mean the back camera, in desktop is the first, and in desktop works as ++ index if you need another webcam"))
 		ECameraSelection cameraSelection;
 
+	/** Initial tracking state*/
 	UPROPERTY(EditAnyWhere, Category = "ARToolKit", meta = (ToolTip = "by default is true, so you start your pawn instance tracking"))
 		bool bAllowTracking = true;
+
+	//-- BASIC OVERRIDES ----------------------------------------------
 
 	virtual void BeginPlay();
 	virtual void Tick(float DeltaTime) override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+
+	//-- METHODS ---------------------------------------------------
+
+	// get texture pointer for pawn
 	UFUNCTION(BlueprintPure, Category = "ARToolKit")
 		UTexture2D* getCameraTexture();
 
-
+	// Implementable event on target found, this triggers when found some target
 	UFUNCTION(BlueprintImplementableEvent, Category = "ARToolKit")
 		void OnTargetFound(int32 targetID,const FName& targetName);
 
+	// Implementable event on target lost, this triggers when lost some target
 	UFUNCTION(BlueprintImplementableEvent, Category = "ARToolKit")
 		void OnTargetLost(int32 targetID, const FName& targetName);
 
-
+	//c++ style method to call within ARToolKit.cpp
 	void execOnTargetFound(int32 id, FString targetName);
 	void execOnTargetLost(int32 id, FString targetName);
 
+	// allow Enable or Disable Tracking to save resources if you do not needed anymore
 	UFUNCTION(BlueprintCallable, Category = "ARToolKit")
 		void SetTracking(bool on);
 

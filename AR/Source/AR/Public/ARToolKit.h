@@ -51,10 +51,14 @@
 #include "trackingSub.h"
 #include "Utils.h"
 
+//---
 //Forward declarations
+//---
 class AARTarget;
 class AARPawn;
 
+//inherit max page from ARToolKit
+//DEPRECATED
 #define PAGES_MAX 10   
 
 class ARToolKit
@@ -64,59 +68,123 @@ public:
 	ARToolKit();
 	~ARToolKit();
 
+	/** Initialize AR type of camera, current Pawn and how many target was found in current map, load NFT data and set enviorment for current level, each level must call this*/
 	void initializeAR(ECameraSelection cameraSelection, AARPawn* newPawn, TArray<AARTarget*> targetsFound);
+
+	/** enable and disable Tracking if you don't needed at runtime*/
 	void setTracking(bool bAllowTrack);
+
+	/** return available targets list found in the current map*/
 	TArray<AARTarget*> getTargets();
+
+	/** turn off AR, must call when you load a new map or when you finisih a game*/
 	void shutdownAR();
+
+	/** update AR, current ARPawn is in charge to call every frame*/
 	void updateAR(float deltaTime);
 	
-
-	/*gets camera texture*/
+	/** gets camera texture*/
 	UTexture2D* getTexture();
 
-	/*get width or hight from the camera texture*/
+	/** get width or hight from the camera texture*/
 	int32 getWidth();
 	int32 getheight();
 
-	/*get target matrix results as unreal FTransform*/
+	/** get target matrix results as unreal FTransform*/
 	FTransform getTargetTransformations();
 
-	/*get the found AATarget transformations in world space*/
+	/** get the found AATarget transformations in world space*/
 	FTransform getAATargetTransformations();
 
-	
-
 private:
-	int initNFT(ARParamLT *cparamLT, AR_PIXEL_FORMAT pixFormat);
+	//-- Initialize methods ---------------------------
+
+	/** load camara intrinsic file and setup pixel format, and create runtime texture with same characteristics*/
 	int setupCamera(FString camera_config, FString camera_parameter);
-	void unloadNFT();
+
+	/** set parameters for natural filucidal targets*/
+	int initNFT(ARParamLT *cparamLT, AR_PIXEL_FORMAT pixFormat);
+
+	/** load natural filucidal target from all targets found in the current map and sets pixel format for tracking handle*/
 	int loadNFT(TArray<AARTarget*> targetFound);
-	void updateTexture(void* data);
-	void detect(unsigned char* data);
+
+	/** start camera play back*/
 	void playPreview();
 
-	FString contentDirectory;
+
+	//-- Runtime methods -----------------------------
+
+	/** update texture and call detection for each frame*/
+	void updateTexture(void* data);
+
+	/** try to detect some image target with the camera data*/
+	void detect(unsigned char* data);
+
+
+	//-- Turn off methods ----------------------------
+
+	/** unload natural filucidal targets, is call form within shutdownAR()*/
+	void unloadNFT();
+	
+	//----- ARTOOLKIT VARS ----------------------------------------------------
+
+	//pixel format for each platform
 	AR_PIXEL_FORMAT		pixelFormat;
+
+	//threads handle for detecting
 	THREAD_HANDLE_T     *threadHandle;
 	AR2HandleT          *ar2Handle;
 	KpmHandle           *kpmHandle;
+
+	//number of surface, meaning number of targets found
 	int                  surfaceSetCount;
+
+	//pointers to NFT info data
 	AR2SurfaceSetT      *surfaceSet[PAGES_MAX];
+
+	//detect parameters
 	ARParamLT		   *gCparamLT;
+
+	//allow multu tracking
 	bool nftMultiMode;
+
+	//flag for KPM
 	bool kpmRequired;
 	bool kpmBusy;
+
+	//detected page
 	int32 pageNo = -1;
 
+
+	//-- UE VARS --------------------------------------------
+
+	//Path to content directory, diferent for each platform
+	FString contentDirectory;
+
+	//store pointer to Pawn in use
 	AARPawn* currentPawn;
+
+	//texture
 	UTexture2D* texture = NULL;
 	FUpdateTextureRegion2D *echoUpdateTextureRegion;
+
+	//camera Texture data array
 	TArray<FColor> rawData;
+
+	//camera size
 	int32 width;
 	int32 height;
+
+	//list of targets
 	TArray<AARTarget*> targets;
+
+	//whenever is singleton valid or not
 	bool isValid = false;
+
+	//store raw target transformations
 	FTransform targetTrans;
+
+	//store UE target transformations
 	FTransform ATargetTrans;
 };
 

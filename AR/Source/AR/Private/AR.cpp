@@ -51,15 +51,35 @@
 
 #define LOG_TAG "ARToolKitLog"
 
+//-- JNI METHODS AND VARS -------------------------------------
+
+/** Start JNI, just to turn on everything inside APL file*/
 int SetupJNICamera(JNIEnv* env);
+
+/** Global JNI enviorement*/
 JNIEnv* ENV = NULL;
+
 static jmethodID jToast;
+
+/** call AndroidThunkJava_startCamera inside APL file*/
 static jmethodID AndroidThunkJava_startCamera;
+
+/** call AndroidThunkJava_stopCamera inside APL file*/
 static jmethodID AndroidThunkJava_stopCamera;
+
+/** call AndroidThunkJava_AndroidFileExist inside APL file*/
 static jmethodID AndroidThunkJava_AndroidFileExist;
+
+/** call AndroidThunkJava_MakeARDirectory inside APL file*/
 static jmethodID AndroidThunkJava_MakeARDirectory;
+
+/** call AndroidThunkJava_Log inside APL file*/
 static jmethodID AndroidThunkJava_Log;
+
+/** stor new Frame, extern in ARToolKit.cpp*/
 static bool newFrame = false;
+
+/** stor raw Data, extern in ARToolKit.cpp*/
 static unsigned char* rawDataAndroid;
 #endif
 
@@ -81,6 +101,7 @@ void FARModule::StartupModule()
 	ARToolkit = ARToolKitInit;
 
 #if PLATFORM_ANDROID
+	//get JNI reference when module is loaded
 	JNIEnv* env = FAndroidApplication::GetJavaEnv();
 	SetupJNICamera(env);
 #endif
@@ -91,6 +112,8 @@ void FARModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
+
+	//destroy ARToolKit at Game shutdown
 	if (ARToolkit.IsValid())
 	{
 		ARToolkit->shutdownAR();
@@ -104,6 +127,7 @@ void FARModule::ShutdownModule()
 IMPLEMENT_MODULE(FARModule, AR)
 
 #if PLATFORM_ANDROID
+//call androidThunkJava_log from this: AndroidThunkCpp_Log
 void AndroidThunkCpp_Log(FString tag, FString msg)
 {
 	if (!AndroidThunkJava_Log) return;
@@ -114,6 +138,7 @@ void AndroidThunkCpp_Log(FString tag, FString msg)
 	ENV->DeleteLocalRef(arg2);
 }
 
+//call AndroidThunkJava_MakeARDirectory from this: AndroidThunkCpp_MakeARDirectory
 void AndroidThunkCpp_MakeARDirectory(FString path)
 {
 	if (!AndroidThunkJava_MakeARDirectory) return;
@@ -122,6 +147,7 @@ void AndroidThunkCpp_MakeARDirectory(FString path)
 	ENV->DeleteLocalRef(arg1);
 }
 
+//call AndroidThunkJava_AFileExist from this: AndroidThunkCpp_AFileExist
 bool AndroidThunkCpp_AFileExist(const FString& path)
 {
 	bool result = false;
@@ -140,6 +166,7 @@ int SetupJNICamera(JNIEnv* env)
 
 	ENV = env;
 
+	//assing AndroidThunkJava_startCamera to static method AndroidThunkJava_startCamera
 	AndroidThunkJava_startCamera = FJavaWrapper::FindMethod(ENV, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_startCamera", "()V", false);
 	if (!AndroidThunkJava_startCamera)
 	{
@@ -147,6 +174,7 @@ int SetupJNICamera(JNIEnv* env)
 		return JNI_ERR;
 	}
 
+	//assing AndroidThunkJava_stopCamera to static method AndroidThunkJava_stopCamera
 	AndroidThunkJava_stopCamera = FJavaWrapper::FindMethod(ENV, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_stopCamera", "()V", false);
 	if (!AndroidThunkJava_stopCamera)
 	{
@@ -154,6 +182,7 @@ int SetupJNICamera(JNIEnv* env)
 		return JNI_ERR;
 	}
 
+	//assing AndroidThunkJava_AndroidFileExist to static method AndroidThunkJava_AndroidFileExist
 	AndroidThunkJava_AndroidFileExist = FJavaWrapper::FindMethod(ENV, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_AFileExist", "(Ljava/lang/String;)Z", false);
 	if (!AndroidThunkJava_AndroidFileExist)
 	{
@@ -161,6 +190,7 @@ int SetupJNICamera(JNIEnv* env)
 		return JNI_ERR;
 	}
 
+	//assing AndroidThunkJava_Log to static method AndroidThunkJava_Log
 	AndroidThunkJava_Log = FJavaWrapper::FindMethod(ENV, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_Log", "(Ljava/lang/String;Ljava/lang/String;)V", false);
 	if (!AndroidThunkJava_Log)
 	{
@@ -168,6 +198,7 @@ int SetupJNICamera(JNIEnv* env)
 		return JNI_ERR;
 	}
 
+	//assing AndroidThunkJava_MakeARDirectory to static method AndroidThunkJava_MakeARDirectory
 	AndroidThunkJava_MakeARDirectory = FJavaWrapper::FindMethod(ENV, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_MakeARDirectory", "(Ljava/lang/String;)V", false);
 	if (!AndroidThunkJava_MakeARDirectory)
 	{
@@ -177,7 +208,7 @@ int SetupJNICamera(JNIEnv* env)
 
 	__android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, "module load success!!! ^_^");
 
-
+	//-- COPY AR CONTENT TO FINAL LOCATION
 	FString DirectoryPath = FPaths::GameContentDir(); // inDirectory;
 	IFileManager* FileManager = &IFileManager::Get();
 
@@ -212,21 +243,21 @@ int SetupJNICamera(JNIEnv* env)
 	return JNI_OK;
 }
 
+//call AndroidThunkJava_startCamera from this: AndroidThunkCpp_startCamera
 void  AndroidThunkCpp_startCamera()
 {
 	if (!AndroidThunkJava_startCamera || !ENV) return;
 	FJavaWrapper::CallVoidMethod(ENV, FJavaWrapper::GameActivityThis, AndroidThunkJava_startCamera);
 }
 
+//call AndroidThunkJava_stopCamera from this: AndroidThunkCpp_stopCamera
 void AndroidThunkCpp_stopCamera()
 {
 	if (!AndroidThunkJava_stopCamera || !ENV) return;
 	FJavaWrapper::CallVoidMethod(ENV, FJavaWrapper::GameActivityThis, AndroidThunkJava_stopCamera);
 }
 
-
-
-
+//Bind new function nativeGetFrameData to GameActivity.java
 extern "C" bool Java_com_epicgames_ue4_GameActivity_nativeGetFrameData(JNIEnv* LocalJNIEnv, jobject LocalThiz, jint frameWidth, jint frameHeight, jbyteArray data)
 {
 	//get the new frame
