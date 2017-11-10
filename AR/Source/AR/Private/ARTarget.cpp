@@ -45,6 +45,10 @@
 #include "ARTarget.h"
 #include "FileManagerGeneric.h"
 
+// Fix WinBase.h override
+#undef UpdateResource
+#define UpdateResource UpdateResource
+
 DEFINE_LOG_CATEGORY_STATIC(LogARToolKits, Log, All);
 
 AARTarget::AARTarget()
