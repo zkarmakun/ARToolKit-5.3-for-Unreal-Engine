@@ -52,6 +52,10 @@ DEFINE_LOG_CATEGORY_STATIC(LogARToolKit, Log, All);
 #define error(txt) GEngine->AddOnScreenDebugMessage(-1,10,FColor::Red, txt)
 #define warning(txt) GEngine->AddOnScreenDebugMessage(-1,10,FColor::Yellow, txt)
 
+// Fix WinBase.h override
+#undef UpdateResource
+#define UpdateResource UpdateResource
+
 //--- ANDROID JAVA CUSTOM CALLS-------------------------
 #if PLATFORM_ANDROID
 #include <android/log.h>
